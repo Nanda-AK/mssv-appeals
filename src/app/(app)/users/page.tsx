@@ -22,13 +22,22 @@ export default async function UsersPage() {
     supabase.from("organizations").select("id, name, type").order("name"),
   ]);
 
+  const spUsers = (users ?? []).filter((u) => u.organization?.type === "service_provider");
+  const clientUsers = (users ?? []).filter((u) => u.organization?.type === "client");
+  const clientOrgs = (organizations ?? []).filter((o) => o.type === "client");
+
   return (
     <div className="p-8">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-[#1A1A2E]">Users</h1>
         <p className="text-[#6B7280] text-sm mt-0.5">{users?.length ?? 0} users</p>
       </div>
-      <UsersClient users={users ?? []} organizations={organizations ?? []} />
+      <UsersClient
+        spUsers={spUsers}
+        clientUsers={clientUsers}
+        clientOrgs={clientOrgs}
+        allOrganizations={organizations ?? []}
+      />
     </div>
   );
 }

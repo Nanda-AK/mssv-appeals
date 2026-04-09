@@ -139,6 +139,44 @@ CREATE POLICY "Admin can delete appeals"
 -- ============================================================
 
 -- ============================================================
+-- Forms (Income Tax Rules reference table)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS forms (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  rule_no TEXT,
+  rule_heading TEXT NOT NULL,
+  form_no TEXT,
+  page_no TEXT,
+  parallel_rule_1962 TEXT,
+  url TEXT,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE forms ENABLE ROW LEVEL SECURITY;
+
+-- All authenticated users can read forms
+CREATE POLICY "Authenticated users can read forms"
+  ON forms FOR SELECT TO authenticated USING (true);
+
+-- Only admin can insert/update forms
+CREATE POLICY "Admin can insert forms"
+  ON forms FOR INSERT TO authenticated
+  WITH CHECK (get_my_role() = 'admin');
+
+CREATE POLICY "Admin can update forms"
+  ON forms FOR UPDATE TO authenticated
+  USING (get_my_role() = 'admin');
+
+-- ============================================================
+-- Supabase Storage: templates bucket
+-- Create in Supabase Dashboard > Storage > New bucket
+-- Name: templates | Set to PUBLIC
+-- Upload the 3 files manually via the Storage UI
+-- ============================================================
+
+-- ============================================================
 -- Seed: MSSV & Co (Service Provider)
 -- ============================================================
 INSERT INTO organizations (name, type) VALUES ('MSSV & Co', 'service_provider')
