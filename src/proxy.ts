@@ -25,19 +25,18 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Use getSession() — reads cookie only, no network call to Supabase
+  const { data: { session } } = await supabase.auth.getSession();
 
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
 
-  if (!user && !isLoginPage) {
+  if (!session && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && isLoginPage) {
+  if (session && isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

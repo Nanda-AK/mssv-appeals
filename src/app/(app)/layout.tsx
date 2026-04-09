@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/user";
 import Sidebar from "@/components/layout/Sidebar";
 import { UserRole } from "@/lib/types";
 
@@ -9,18 +10,10 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("name, role")
-    .eq("id", user.id)
-    .single();
+  const profile = await getCurrentUser();
 
   const userName = profile?.name ?? user.email ?? "User";
   const userRole = (profile?.role ?? "staff") as UserRole;
