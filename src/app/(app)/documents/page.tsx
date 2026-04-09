@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import DocumentsClient from "./DocumentsClient";
 
+export const revalidate = 120;
+
 export default async function DocumentsPage() {
   const supabase = await createClient();
 

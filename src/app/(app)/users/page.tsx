@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import UsersClient from "./UsersClient";
 
+export const revalidate = 60; // cache for 60 seconds
+
 export default async function UsersPage() {
   const supabase = await createClient();
 
