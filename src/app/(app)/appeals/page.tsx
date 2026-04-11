@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/user";
 import Link from "next/link";
 import AppealsTable from "./AppealsTable";
 import { Appeal } from "@/lib/types";
 
 interface SelectOption { id: string; name: string; }
+
+const PAGE_SIZE = 50;
 
 export default async function AppealsPage({
   searchParams,
@@ -13,15 +16,13 @@ export default async function AppealsPage({
   const params = await searchParams;
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase
-    .from("users")
-    .select("role, org_id")
-    .eq("id", user!.id)
-    .single();
-
+  const profile = await getCurrentUser();
   const role = profile?.role ?? "staff";
   const orgId = profile?.org_id;
+
+  const page = Math.max(1, parseInt(params.page ?? "1", 10));
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
 
   // Fetch filter options
   const [{ data: clients }, { data: staffUsers }] = await Promise.all([
@@ -36,8 +37,9 @@ export default async function AppealsPage({
       *,
       client_org:organizations!client_org_id(id, name),
       assigned_user:users!assigned_to(id, name)
-    `)
-    .order("next_hearing_date", { ascending: true, nullsFirst: false });
+    `, { count: "exact" })
+    .order("next_hearing_date", { ascending: true, nullsFirst: false })
+    .range(from, to);
 
   // Client role filter
   if (role === "client" && orgId) {
@@ -51,7 +53,9 @@ export default async function AppealsPage({
   if (params.ay) query = query.eq("assessment_year", params.ay);
   if (params.priority) query = query.eq("priority", params.priority);
 
-  const { data: appeals } = await query;
+  const { data: appeals, count } = await query;
+
+  const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
 
   return (
     <div className="p-8">
@@ -59,7 +63,7 @@ export default async function AppealsPage({
         <div>
           <h1 className="text-2xl font-semibold text-[#1A1A2E]">Appeals</h1>
           <p className="text-[#6B7280] text-sm mt-0.5">
-            {appeals?.length ?? 0} records
+            {count ?? 0} records
           </p>
         </div>
         {(role === "admin" || role === "staff") && (
@@ -81,6 +85,10 @@ export default async function AppealsPage({
         staffUsers={(staffUsers as SelectOption[]) ?? []}
         userRole={role}
         filters={params}
+        page={page}
+        totalPages={totalPages}
+        totalCount={count ?? 0}
+        pageSize={PAGE_SIZE}
       />
     </div>
   );

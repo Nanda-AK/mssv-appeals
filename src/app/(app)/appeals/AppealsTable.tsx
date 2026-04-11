@@ -15,6 +15,10 @@ interface Props {
   staffUsers: SelectOption[];
   userRole: string;
   filters: { [key: string]: string | undefined };
+  page: number;
+  totalPages: number;
+  totalCount: number;
+  pageSize: number;
 }
 
 const priorityColors: Record<string, string> = {
@@ -35,24 +39,35 @@ const statusColors: Record<string, string> = {
   "Closed": "bg-gray-100 text-gray-500",
 };
 
-export default function AppealsTable({ appeals, clients, staffUsers, userRole, filters }: Props) {
+export default function AppealsTable({ appeals, clients, staffUsers, userRole, filters, page, totalPages, totalCount, pageSize }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
-  function updateFilter(key: string, value: string) {
+  function buildParams(overrides: Record<string, string | undefined>) {
     const params = new URLSearchParams();
-    Object.entries(filters).forEach(([k, v]) => {
-      if (v && k !== key) params.set(k, v);
+    const merged = { ...filters, ...overrides };
+    Object.entries(merged).forEach(([k, v]) => {
+      if (v) params.set(k, v);
     });
-    if (value) params.set(key, value);
-    router.push(`${pathname}?${params.toString()}`);
+    return params.toString();
+  }
+
+  function updateFilter(key: string, value: string) {
+    // Reset to page 1 when filter changes
+    router.push(`${pathname}?${buildParams({ [key]: value || undefined, page: "1" })}`);
+  }
+
+  function goToPage(p: number) {
+    router.push(`${pathname}?${buildParams({ page: String(p) })}`);
   }
 
   function clearFilters() {
     router.push(pathname);
   }
 
-  const hasFilters = Object.values(filters).some(Boolean);
+  const hasFilters = Object.entries(filters).some(([k, v]) => k !== "page" && Boolean(v));
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, totalCount);
 
   return (
     <div>
@@ -167,8 +182,8 @@ export default function AppealsTable({ appeals, clients, staffUsers, userRole, f
                   </td>
                 </tr>
               ) : (
-                appeals.map((appeal) => (
-                  <tr key={appeal.id} className="hover:bg-[#F8F9FA] transition-colors">
+                appeals.map((appeal, i) => (
+                  <tr key={appeal.id} className={`hover:bg-[#F8F9FA] transition-colors ${i % 2 === 1 ? "bg-[#FAFAFA]" : "bg-white"}`}>
                     <td className="px-4 py-3 font-medium text-[#1A1A2E] whitespace-nowrap">
                       {appeal.appeal_number}
                     </td>
@@ -230,6 +245,58 @@ export default function AppealsTable({ appeals, clients, staffUsers, userRole, f
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[#E5E7EB] bg-[#F8F9FA]">
+            <p className="text-xs text-[#6B7280]">
+              Showing {from}–{to} of {totalCount} records
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => goToPage(page - 1)}
+                disabled={page <= 1}
+                className="px-3 py-1.5 text-xs rounded-lg border border-[#E5E7EB] bg-white text-[#1A1A2E] hover:bg-[#F0F4FA] disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                Previous
+              </button>
+
+              {/* Page number buttons — show up to 7 pages around current */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                  if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((item, idx) =>
+                  item === "..." ? (
+                    <span key={`ellipsis-${idx}`} className="px-2 text-xs text-[#6B7280]">…</span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => goToPage(item as number)}
+                      className={`px-3 py-1.5 text-xs rounded-lg border transition ${
+                        item === page
+                          ? "bg-[#1E3A5F] text-white border-[#1E3A5F]"
+                          : "border-[#E5E7EB] bg-white text-[#1A1A2E] hover:bg-[#F0F4FA]"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+
+              <button
+                onClick={() => goToPage(page + 1)}
+                disabled={page >= totalPages}
+                className="px-3 py-1.5 text-xs rounded-lg border border-[#E5E7EB] bg-white text-[#1A1A2E] hover:bg-[#F0F4FA] disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
